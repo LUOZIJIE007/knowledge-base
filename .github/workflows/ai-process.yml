@@ -1,0 +1,25 @@
+name: AI Knowledge Process
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run AI knowledge extraction
+        run: python scripts/extract_knowledge.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit changes
+        run: |
+          git config user.name "AI Knowledge Bot"
+          git config user.email "bot@knowledge-base.local"
+          git add -A
+          git diff --cached --quiet || git commit -m "chore(ai): daily knowledge extraction [skip ci]"
+          git push

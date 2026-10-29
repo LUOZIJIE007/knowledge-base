@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人AI知识库</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login-view" class="login-wrap hidden">
+  <div class="login-card">
+    <h1>个人AI知识库</h1>
+    <p class="sub">手机号登录 · 本地部署 · 数据隔离</p>
+    <div class="form">
+      <input id="login-phone" type="tel" maxlength="11" placeholder="手机号" autocomplete="tel">
+      <div class="code-row">
+        <input id="login-code" type="text" maxlength="6" placeholder="验证码">
+        <button id="send-code" class="btn ghost">获取验证码</button>
+      </div>
+      <div id="login-devtip" class="devtip"></div>
+      <button id="login-btn" class="btn primary">登录 / 注册</button>
+      <button id="dev-login-btn" class="btn ghost dev-btn" style="margin-top: 8px;">🔧 开发者模式（免密）</button>
+      <p id="login-err" class="err"></p>
+    </div>
+  </div>
+</div>
+
+<div id="app-view" class="app hidden">
+  <header class="topbar">
+    <div class="brand">🧠 个人AI知识库</div>
+    <nav class="nav">
+      <button data-page="dashboard" class="nav-btn active">工作台</button>
+      <button data-page="capture" class="nav-btn">采集</button>
+      <button data-page="library" class="nav-btn">知识库</button>
+      <button data-page="ask" class="nav-btn">问答</button>
+      <button data-page="review" class="nav-btn">复盘</button>
+      <button data-page="meta" class="nav-btn">元认知</button>
+      <button data-page="profile" class="nav-btn">档案</button>
+      <button data-page="settings" class="nav-btn">设置</button>
+      <button data-page="ops" class="nav-btn">运维</button>
+    </nav>
+    <div class="top-user"><span id="user-phone"></span> <button id="logout" class="btn ghost small">退出</button></div>
+  </header>
+
+  <main class="main">
+    <section id="page-dashboard" class="page active">
+      <h2>工作台</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-num" id="stat-cards">0</div><div class="stat-label">知识卡片</div></div>
+        <div class="stat"><div class="stat-num" id="stat-quality">0</div><div class="stat-label">平均质量分</div></div>
+        <div class="stat"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">连续复盘天数</div></div>
+        <div class="stat"><div class="stat-num" id="stat-fix">0</div><div class="stat-label">已改错题</div></div>
+      </div>
+      <div class="panel">
+        <h3>今日待办</h3>
+        <div id="dash-actions" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>最近采集</h3>
+        <div id="dash-captures" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>快速动作</h3>
+        <div class="quick-actions">
+          <button class="btn primary" onclick="go('capture')">+ 采集内容</button>
+          <button class="btn" onclick="go('review')">+ 写复盘</button>
+          <button class="btn" onclick="go('ask')">问知识库</button>
+          <button class="btn" onclick="go('meta')">改错题</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-capture" class="page">
+      <h2>采集内容</h2>
+      <div class="panel">
+        <h3>采集方式</h3>
+        <div class="tabs">
+          <button class="tab active" data-cap="note">速记 / 粘贴</button>
+          <button class="tab" data-cap="link">网页链接</button>
+          <button class="tab" data-cap="file">上传文件</button>
+          <button class="tab" data-cap="video">视频文稿</button>
+        </div>
+        <div id="cap-note" class="cap-form">
+          <input id="cap-title" class="w" placeholder="标题（可选）">
+          <textarea id="cap-content" class="w" rows="6" placeholder="粘贴内容、想法、摘录……"></textarea>
+        </div>
+        <div id="cap-link" class="cap-form hidden">
+          <input id="cap-url" class="w" placeholder="粘贴网页链接（公众号/知乎/新闻）">
+        </div>
+        <div id="cap-file" class="cap-form hidden">
+          <input id="cap-file-input" type="file" class="w">
+          <p class="hint">支持 txt / md / json；其他文件将读取文本内容。</p>
+        </div>
+        <div id="cap-video" class="cap-form hidden">
+          <input id="cap-video-url" class="w" placeholder="视频链接（抖音/B站）">
+          <p class="hint">视频转文字为云端能力，当前请将转录文稿直接粘贴到「速记」中。</p>
+          <textarea id="cap-video-text" class="w" rows="6" placeholder="粘贴视频转录文稿（或关键内容）"></textarea>
+        </div>
+        <button id="cap-submit" class="btn primary">保存采集</button>
+        <p id="cap-msg" class="msg"></p>
+      </div>
+      <div class="panel">
+        <h3>待蒸馏（新采集内容，点击蒸馏为知识卡片）</h3>
+        <div id="capture-list" class="list"></div>
+      </div>
+    </section>
+
+    <section id="page-library" class="page">
+      <h2>知识库</h2>
+      <div class="panel">
+        <div class="search-row">
+          <input id="lib-search" class="w" placeholder="搜索卡片标题/内容/标签">
+          <button id="lib-search-btn" class="btn primary">搜索</button>
+        </div>
+        <div class="filter-row" id="lib-filters"></div>
+        <div id="card-list" class="card-grid"></div>
+      </div>
+    </section>
+
+    <section id="page-ask" class="page">
+      <h2>智能问答</h2>
+      <div class="panel">
+        <div class="chat-box">
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-input">
+            <input id="ask-input" class="w" placeholder="问点什么（基于你的档案和知识库）" onkeydown="if(event.key==='Enter')askQ()">
+            <button id="ask-btn" class="btn primary">提问</button>
+          </div>
+        </div>
+        <p class="hint" id="ask-mode"></p>
+      </div>
+    </section>
+
+    <section id="page-review" class="page">
+      <h2>每日复盘</h2>
+      <div class="panel">
+        <h3>今日复盘（四步闭环：方法 → 动作 → 结果 → 卡点）</h3>
+        <textarea id="review-input" class="w" rows="7" placeholder="今天用了什么方法？做了什么？结果如何（带数字）？卡在哪里？"></textarea>
+        <div class="quick-actions">
+          <button id="review-submit" class="btn primary">提交复盘</button>
+          <button id="review-ai" class="btn ghost" title="填一段示例，看看AI会怎么帮你分析">填示例</button>
+        </div>
+        <p id="review-msg" class="msg"></p>
+        <div id="review-analysis" class="analysis hidden"></div>
+      </div>
+      <div class="panel">
+        <h3>历史复盘</h3>
+        <div id="review-history" class="list"></div>
+      </div>
+    </section>
+
+    <section id="page-meta" class="page">
+      <h2>元认知 · 自我提升 · 自我改错</h2>
+      <div class="panel">
+        <h3>错题本（自我改错）</h3>
+        <div class="form-row">
+          <input id="corr-error" class="w" placeholder="犯了什么错（一句话）">
+          <input id="corr-context" class="w" placeholder="当时背景（可选）">
+          <input id="corr-lesson" class="w" placeholder="教训/下次怎么改">
+          <button id="corr-submit" class="btn primary">记录改错</button>
+        </div>
+        <div id="correction-list" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>成长曲线</h3>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-num" id="meta-reviews">0</div><div class="stat-label">累计复盘</div></div>
+          <div class="stat"><div class="stat-num" id="meta-streak">0</div><div class="stat-label">连续天数</div></div>
+          <div class="stat"><div class="stat-num" id="meta-open">0</div><div class="stat-label">待改错题</div></div>
+          <div class="stat"><div class="stat-num" id="meta-fixed">0</div><div class="stat-label">已改正</div></div>
+        </div>
+        <p class="hint">关注"错题数下降"比关注"卡片数上升"更能说明你在变强。</p>
+      </div>
+      <div class="panel">
+        <h3>认知偏差清单</h3>
+        <p class="hint">AI 复盘时会对照这份清单检查你是否在犯这些错。点击"认领"记录你自己的高发偏差。</p>
+        <div id="bias-list" class="bias-list"></div>
+        <button id="bias-add-toggle" class="btn ghost small">+ 添加我的偏差</button>
+        <div id="bias-add" class="form-row hidden">
+          <input id="bias-title" class="w" placeholder="偏差名称">
+          <input id="bias-content" class="w" placeholder="我的具体表现">
+          <button id="bias-add" class="btn primary">保存</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>思维模型</h3>
+        <div id="model-list" class="bias-list"></div>
+        <button id="model-add-toggle" class="btn ghost small">+ 添加思维模型</button>
+        <div id="model-add" class="form-row hidden">
+          <input id="model-title" class="w" placeholder="模型名称">
+          <input id="model-content" class="w" placeholder="我的理解">
+          <button id="model-add" class="btn primary">保存</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-profile" class="page">
+      <h2>个人档案</h2>
+      <div class="panel">
+        <p class="hint">姜胡说心法：放真实的自己，不是理想的自己。虚假的档案除了好看，屁用没有。</p>
+        <textarea id="profile-input" class="w" rows="10" placeholder="我是谁？干什么的？优点？缺点？目标？卡点？"></textarea>
+        <div class="quick-actions">
+          <button id="profile-save" class="btn primary">保存档案</button>
+          <button id="profile-ai" class="btn ghost">AI 帮我梳理（填完自述后点）</button>
+        </div>
+        <p id="profile-msg" class="msg"></p>
+        <div id="profile-ai-out" class="analysis hidden"></div>
+      </div>
+    </section>
+
+    <section id="page-settings" class="page">
+      <h2>设置</h2>
+      <div class="panel">
+        <h3>AI 接口（OpenAI 兼容）</h3>
+        <p class="hint">不配置也能用（规则模式）。配置后蒸馏、复盘分析、问答、档案梳理全部升级。</p>
+        <div class="form-row">
+          <input id="set-base" class="w" placeholder="Base URL，如 https://api.openai.com/v1">
+          <input id="set-model" class="w" placeholder="模型名，如 gpt-4o-mini">
+          <input id="set-key" class="w" placeholder="API Key">
+          <button id="set-save" class="btn primary">保存</button>
+        </div>
+        <p id="set-msg" class="msg"></p>
+        <p id="set-status" class="hint"></p>
+      </div>
+    </section>
+
+    <section id="page-ops" class="page">
+      <h2>运维看板</h2>
+      <div class="panel">
+        <h3>快速操作</h3>
+        <div class="quick-actions">
+          <button id="ops-run-btn" class="btn primary">🚀 执行完整运维</button>
+          <button id="ops-quick-btn" class="btn">⚡ 快速运维</button>
+          <button id="ops-refresh-btn" class="btn ghost">🔄 刷新</button>
+        </div>
+        <p id="ops-msg" class="msg"></p>
+      </div>
+
+      <div class="panel">
+        <h3>今日摘要</h3>
+        <div id="ops-digest" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <h3>任务运行记录</h3>
+        <div id="ops-tasks" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <h3>采集源管理</h3>
+        <div class="form-row">
+          <input id="ops-src-name" class="w" placeholder="源名称">
+          <input id="ops-src-url" class="w" placeholder="URL（RSS/网页）">
+          <select id="ops-src-type" class="w" style="width:90px">
+            <option value="rss">RSS</option>
+            <option value="web">网页</option>
+          </select>
+          <button id="ops-src-add" class="btn primary">添加</button>
+        </div>
+        <div id="ops-sources" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <h3>过期内容标记</h3>
+        <div id="ops-expiry" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <h3>版本快照</h3>
+        <div id="ops-versions" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <h3>变更日志</h3>
+        <div id="ops-changes" class="list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+name: Build & Deploy
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "content/**"
+      - "_config.yml"
+      - "index.html"
+      - "CLAUDE.md"
+      - "llms.txt"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.9'
+      - name: Bundle install
+        run: gem install jekyll -v 4.3.3 --no-document
+      - name: Build site
+        run: jekyll build --source . --destination _site
+      - name: Generate search index
+        run: python scripts/build_search_index.py
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site

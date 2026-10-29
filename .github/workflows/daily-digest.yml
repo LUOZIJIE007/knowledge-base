@@ -1,0 +1,38 @@
+name: Daily Digest
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate digest
+        run: |
+          echo "# 知识库每日更新摘要" >> DIGEST.md
+          echo "" >> DIGEST.md
+          echo "## $(date +%Y-%m-%d)" >> DIGEST.md
+          echo "" >> DIGEST.md
+          echo "### 今日变更" >> DIGEST.md
+          echo "" >> DIGEST.md
+          git log --since="24 hours ago" --pretty=format:"- %h %s" --name-only | head -30 >> DIGEST.md
+          echo "" >> DIGEST.md
+          echo "### 统计" >> DIGEST.md
+          echo "" >> DIGEST.md
+          echo "- 新增文件: $(git log --since='24 hours ago' --diff-filter=A --name-only --pretty=format: | grep -c '.md$')" >> DIGEST.md
+          echo "- 修改文件: $(git log --since='24 hours ago' --diff-filter=M --name-only --pretty=format: | grep -c '.md$')" >> DIGEST.md
+          echo "- 删除文件: $(git log --since='24 hours ago' --diff-filter=D --name-only --pretty=format: | grep -c '.md$')" >> DIGEST.md
+      - name: Commit digest
+        run: |
+          git config user.name "Digest Bot"
+          git config user.email "bot@knowledge-base.local"
+          git add DIGEST.md
+          git diff --cached --quiet || git commit -m "docs: daily digest [skip ci]"
+          git push

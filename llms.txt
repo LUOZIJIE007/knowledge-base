@@ -1,0 +1,33 @@
+# llms.txt — AI 可读索引
+
+> 2026-10-29
+> This file helps AI agents understand the structure of this knowledge base.
+
+## Overview
+This is a GitHub-based knowledge management system. All knowledge lives as Markdown files organized by category. AI agents should read, maintain, and extend this knowledge base.
+
+## Structure
+
+### Content Directory
+- `content/notes/` — Personal knowledge notes, organized by category
+  - `ai/` — AI, LLM, machine learning
+  - `engineering/` — Software engineering, architecture
+  - `business/` — Business, strategy, marketing
+  - `design/` — UI/UX, visual design
+  - `life/` — Personal growth, habits, health
+- `content/team/` — Team-shared documentation
+- `content/public/` — Public-facing articles (blog posts)
+- `content/_templates/` — Markdown templates for new content
+
+### Key Files
+- `CLAUDE.md` — AI agent maintenance rules (read this first)
+- `AGENTS.md` — Agent interface specification
+- `_config.yml` — Site configuration
+- `scripts/` — Automation scripts
+- `.github/workflows/` — CI/CD pipelines
+
+## How to Use
+1. Read `CLAUDE.md` first for maintenance rules
+2. Search `content/` for relevant knowledge
+3. Use `scripts/build_search_index.py` to rebuild search
+4. Use `scripts/extract_knowledge.py` for AI processing

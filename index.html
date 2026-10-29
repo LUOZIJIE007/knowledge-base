@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库</title>
+<style>
+:root {
+  --bg: #fafafa; --card: #fff; --text: #1a1a1a; --muted: #6b7280;
+  --border: #e5e7eb; --accent: #2563eb; --accent-bg: #eff6ff;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+h1 { font-size: 2.5rem; margin-bottom: 8px; }
+h2 { font-size: 1.5rem; margin-bottom: 16px; }
+.subtitle { color: var(--muted); font-size: 1.1rem; margin-bottom: 40px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-decoration: none; color: inherit; transition: box-shadow .2s; }
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.card h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--accent); }
+.card p { color: var(--muted); font-size: .9rem; }
+.card-meta { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.tag { background: var(--accent-bg); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-size: .75rem; }
+footer { text-align: center; color: var(--muted); margin-top: 60px; padding: 20px; font-size: .85rem; }
+#search-box { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; margin-bottom: 32px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧠 知识库</h1>
+  <p class="subtitle">个人与团队知识管理平台 — 基于 GitHub</p>
+
+  <input id="search-box" type="search" placeholder="搜索知识库... (标题、标签、内容)" onkeyup="searchKB(this.value)">
+
+  <div id="results">
+    <div class="grid" id="card-grid"></div>
+  </div>
+
+  <footer>Powered by GitHub Pages · Markdown · AI</footer>
+</div>
+
+<script>
+const INDEX_URL = '/assets/search-index.json';
+let index = [];
+
+async function loadIndex() {
+  const res = await fetch(INDEX_URL);
+  index = await res.json();
+  renderAll();
+}
+
+function renderAll() {
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = index.map(d => `
+    <a class="card" href="${d.url}">
+      <h3>${d.title}</h3>
+      <p>${d.text.slice(0, 100)}...</p>
+      <div class="card-meta">${(d.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </a>
+  `).join('');
+}
+
+function searchKB(q) {
+  if (!q.trim()) { renderAll(); return; }
+  const lower = q.toLowerCase();
+  const filtered = index.filter(d =>
+    d.title.toLowerCase().includes(lower) ||
+    (d.tags||[]).some(t => t.toLowerCase().includes(lower)) ||
+    d.text.toLowerCase().includes(lower)
+  );
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = filtered.map(d => `
+    <a class="card" href="${d.url}">
+      <h3>${d.title}</h3>
+      <p>${d.text.slice(0, 100)}...</p>
+      <div class="card-meta">${(d.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </a>
+  `).join('') || '<p style="grid-column:1/-1;text-align:center;color:var(--muted)">无匹配结果</p>';
+}
+
+loadIndex();
+</script>
+</body>
+</html>

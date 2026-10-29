@@ -1,0 +1,45 @@
+# Jekyll/Hugo compatible site config
+site:
+  title: "知识库"
+  description: "个人与团队知识管理平台"
+  baseurl: ""
+  url: "https://yourname.github.io/knowledge-base"
+  author: "Your Name"
+  email: "your@email.com"
+
+# Content
+content:
+  notes: "content/notes"
+  team: "content/team"
+  public: "content/public"
+
+# Navigation
+nav:
+  - name: "首页"
+    url: "/"
+  - name: "AI"
+    url: "/notes/ai/"
+  - name: "工程"
+    url: "/notes/engineering/"
+  - name: "商业"
+    url: "/notes/business/"
+  - name: "设计"
+    url: "/notes/design/"
+  - name: "生活"
+    url: "/notes/life/"
+  - name: "团队"
+    url: "/team/"
+  - name: "公开"
+    url: "/public/"
+
+# Search
+search:
+  enabled: true
+  engine: "lunr"
+  index: "assets/search-index.json"
+
+# AI
+ai:
+  model: "gpt-4o-mini"
+  endpoint: "https://models.github.ai/inference"
+  max_tokens: 1000
