@@ -33,6 +33,9 @@
       <button data-page="capture" class="nav-btn">采集</button>
       <button data-page="library" class="nav-btn">知识库</button>
       <button data-page="ask" class="nav-btn">问答</button>
+      <button data-page="graph" class="nav-btn">图谱</button>
+      <button data-page="learn" class="nav-btn">学习</button>
+      <button data-page="agents" class="nav-btn">Agent</button>
       <button data-page="review" class="nav-btn">复盘</button>
       <button data-page="meta" class="nav-btn">元认知</button>
       <button data-page="profile" class="nav-btn">档案</button>
@@ -118,16 +121,91 @@
     </section>
 
     <section id="page-ask" class="page">
-      <h2>智能问答</h2>
+      <h2>智能问答 <span class="badge-ai">RAG</span></h2>
       <div class="panel">
         <div class="chat-box">
-          <div id="chat-log" class="chat-log"></div>
+          <div id="chat-log" class="chat-log">
+            <div class="chat-bubble bot">你好！我是你的知识库助手。基于你的知识卡片回答问题，并标注来源。试试问我任何事！</div>
+          </div>
           <div class="chat-input">
-            <input id="ask-input" class="w" placeholder="问点什么（基于你的档案和知识库）" onkeydown="if(event.key==='Enter')askQ()">
+            <input id="ask-input" class="w" placeholder="基于知识库提问..." onkeydown="if(event.key==='Enter')askQ()">
             <button id="ask-btn" class="btn primary">提问</button>
+            <button id="ask-rag-btn" class="btn ghost" title="使用 RAG 深度检索">RAG</button>
           </div>
         </div>
         <p class="hint" id="ask-mode"></p>
+        <div id="ask-sources" class="sources-list"></div>
+      </div>
+    </section>
+
+    <section id="page-graph" class="page">
+      <h2>知识图谱</h2>
+      <div class="panel">
+        <div class="quick-actions">
+          <button id="kg-refresh" class="btn primary">🔄 刷新图谱</button>
+          <button id="kg-ingest-all" class="btn">📊 扫描全部卡片</button>
+        </div>
+        <div id="kg-stats" class="stat-grid">
+          <div class="stat"><div class="stat-num" id="kg-entities">0</div><div class="stat-label">实体</div></div>
+          <div class="stat"><div class="stat-num" id="kg-relations">0</div><div class="stat-label">关系</div></div>
+          <div class="stat"><div class="stat-num" id="kg-cards">0</div><div class="stat-label">关联卡片</div></div>
+        </div>
+        <div id="kg-container" style="width:100%;height:500px;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+          <svg id="kg-svg" width="100%" height="100%"></svg>
+        </div>
+        <p class="hint">节点大小表示出现频率，连线表示知识关联。点击节点查看详情。</p>
+      </div>
+    </section>
+
+    <section id="page-learn" class="page">
+      <h2>学习看板</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-num" id="lr-streak">0</div><div class="stat-label">当前连击</div></div>
+        <div class="stat"><div class="stat-num" id="lr-longest">0</div><div class="stat-label">最长连击</div></div>
+        <div class="stat"><div class="stat-num" id="lr-cards">0</div><div class="stat-label">知识总量</div></div>
+        <div class="stat"><div class="stat-num" id="lr-review">0</div><div class="stat-label">待复习</div></div>
+      </div>
+      <div class="panel">
+        <h3>知识盲区检测</h3>
+        <div id="lr-gaps" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>学习路径</h3>
+        <div class="form-row">
+          <input id="lr-topic" class="w" placeholder="想学什么主题？（留空自动生成）">
+          <button id="lr-gen-path" class="btn primary">生成学习路径</button>
+        </div>
+        <div id="lr-paths" class="list"></div>
+      </div>
+      <div class="panel">
+        <h3>知识覆盖度</h3>
+        <div id="lr-coverage"></div>
+      </div>
+    </section>
+
+    <section id="page-agents" class="page">
+      <h2>多 Agent 协作中心</h2>
+      <div class="panel">
+        <h3>Agent 团队</h3>
+        <div class="agent-grid">
+          <div class="agent-card"><div class="agent-avatar">🔬</div><div><b>研究员</b><br><span class="hint">采集与分析资料</span></div></div>
+          <div class="agent-card"><div class="agent-avatar">✏️</div><div><b>编辑</b><br><span class="hint">整理与去重</span></div></div>
+          <div class="agent-card"><div class="agent-avatar">🎓</div><div><b>导师</b><br><span class="hint">答疑与规划</span></div></div>
+          <div class="agent-card"><div class="agent-avatar">🏛️</div><div><b>策展人</b><br><span class="hint">蒸馏与图谱</span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>一键指挥</h3>
+        <div class="quick-actions">
+          <button class="btn primary" onclick="runAgent('analyze')">📊 全员分析知识库</button>
+          <button class="btn" onclick="runAgent('digest')">📋 生成知识蒸馏</button>
+          <button class="btn" onclick="runAgent('learn')">🎓 生成学习计划</button>
+        </div>
+        <div id="agent-result" class="analysis hidden"></div>
+      </div>
+      <div class="panel">
+        <h3>Agent 活动日志</h3>
+        <div id="agent-log" class="list"></div>
       </div>
     </section>
 

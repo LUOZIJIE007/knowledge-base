@@ -94,7 +94,7 @@ function go(page) {
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.page === page));
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.getElementById("page-" + page).classList.add("active");
-  const loaders = { dashboard: loadDashboard, capture: loadCaptures, library: loadLibrary, ask: loadAsk, review: loadReviews, meta: loadMeta, profile: loadProfile, settings: loadSettings };
+  const loaders = { dashboard: loadDashboard, capture: loadCaptures, library: loadLibrary, ask: loadAsk, graph: loadGraph, learn: loadLearn, agents: loadAgents, review: loadReviews, meta: loadMeta, profile: loadProfile, settings: loadSettings };
   loaders[page]?.();
 }
 
@@ -417,6 +417,215 @@ function rollbackVersion(tag) {
     document.getElementById("ops-msg").textContent = r.rolled_back ? "回滚成功" : "回滚失败";
     loadOps();
   });
+}
+
+/* ==================== 终极形态：RAG 问答 ==================== */
+async function askQ() {
+  const input = document.getElementById("ask-input");
+  const q = input.value.trim();
+  if (!q) return;
+  const log = document.getElementById("chat-log");
+  log.innerHTML += `<div class="msg-row msg-user">${esc(q)}</div>`;
+  input.value = "";
+  log.innerHTML += `<div class="msg-row msg-ai">正在检索知识库...</div>`;
+  const last = log.lastElementChild;
+  try {
+    const r = await API("/api/rag/ask", { method: "POST", body: { question: q } });
+    let html = esc(r.answer).replace(/\n/g, "<br>");
+    if (r.sources && r.sources.length) {
+      html += `<div class="sources-list"><span class="hint">引用来源：</span>`;
+      html += r.sources.map(s => `<span class="tag" title="${esc(s.library)}">${esc(s.title)}</span>`).join(" ");
+      html += `</div>`;
+    }
+    last.innerHTML = html;
+    document.getElementById("ask-mode").textContent = r.mode === "ai" ? "AI 模式 · RAG 深度检索" : "规则检索模式（配置 AI 后更智能）";
+  } catch (e) { last.textContent = "出错：" + e.message; }
+  log.scrollTop = log.scrollHeight;
+}
+
+// RAG 按钮绑定
+if (document.getElementById("ask-rag-btn")) {
+  document.getElementById("ask-rag-btn").onclick = () => askQ();
+}
+if (document.getElementById("ask-btn")) {
+  document.getElementById("ask-btn").onclick = () => askQ();
+}
+
+/* ==================== 终极形态：知识图谱 ==================== */
+async function loadGraph() {
+  try {
+    const data = await API("/api/kg/graph");
+    document.getElementById("kg-entities").textContent = data.stats?.entities || 0;
+    document.getElementById("kg-relations").textContent = data.stats?.relations || 0;
+    renderKgGraph(data);
+  } catch (e) { console.error("KG load error:", e); }
+}
+
+function renderKgGraph(data) {
+  const svg = document.getElementById("kg-svg");
+  if (!svg) return;
+  const W = svg.clientWidth || 800, H = svg.clientHeight || 500;
+  svg.innerHTML = "";
+  if (!data.nodes || !data.nodes.length) {
+    svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#999" font-size="14">暂无图谱数据，点击「扫描全部卡片」生成</text>`;
+    return;
+  }
+  // 简单力导向布局
+  const nodes = data.nodes.map((n, i) => ({
+    ...n,
+    x: W/2 + (Math.cos(i * 2.399) * 150),
+    y: H/2 + (Math.sin(i * 2.399) * 150),
+    vx: 0, vy: 0,
+  }));
+  const nodeMap = {};
+  nodes.forEach(n => nodeMap[n.id] = n);
+  const links = data.links.filter(l => nodeMap[l.source] && nodeMap[l.target]);
+
+  // 迭代力导向
+  for (let iter = 0; iter < 100; iter++) {
+    // 斥力
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
+        const dist = Math.max(Math.sqrt(dx*dx + dy*dy), 1);
+        const force = 800 / (dist * dist);
+        const fx = (dx/dist) * force, fy = (dy/dist) * force;
+        nodes[i].vx -= fx; nodes[i].vy -= fy;
+        nodes[j].vx += fx; nodes[j].vy += fy;
+      }
+    }
+    // 引力（连线）
+    for (const l of links) {
+      const s = nodeMap[l.source], t = nodeMap[l.target];
+      const dx = t.x - s.x, dy = t.y - s.y;
+      const dist = Math.max(Math.sqrt(dx*dx + dy*dy), 1);
+      const force = (dist - 100) * 0.05;
+      const fx = (dx/dist) * force, fy = (dy/dist) * force;
+      s.vx += fx; s.vy += fy; t.vx -= fx; t.vy -= fy;
+    }
+    // 中心引力
+    for (const n of nodes) {
+      n.vx += (W/2 - n.x) * 0.01;
+      n.vy += (H/2 - n.y) * 0.01;
+      n.vx *= 0.85; n.vy *= 0.85;
+      n.x += n.vx; n.y += n.vy;
+      n.x = Math.max(40, Math.min(W-40, n.x));
+      n.y = Math.max(40, Math.min(H-40, n.y));
+    }
+  }
+
+  // 绘制连线
+  for (const l of links) {
+    const s = nodeMap[l.source], t = nodeMap[l.target];
+    svg.innerHTML += `<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="#ddd" stroke-width="${Math.min(l.weight || 1, 3)}" opacity="0.6"/>`;
+    const mx = (s.x+t.x)/2, my = (s.y+t.y)/2;
+    svg.innerHTML += `<text x="${mx}" y="${my}" text-anchor="middle" font-size="10" fill="#aaa">${esc(l.label || "")}</text>`;
+  }
+  // 绘制节点
+  const colors = { concept: "#7F77DD", person: "#D85A30", tool: "#5DCAA5", method: "#EF9F27", field: "#378ADD" };
+  for (const n of nodes) {
+    const r = Math.max(8, Math.min(24, 8 + (n.freq || 1) * 2));
+    const color = colors[n.type] || colors.concept;
+    svg.innerHTML += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${color}" opacity="0.8" stroke="#fff" stroke-width="2"><title>${esc(n.name)} (${n.type}) · 出现${n.freq}次</title></circle>`;
+    svg.innerHTML += `<text x="${n.x}" y="${n.y + r + 14}" text-anchor="middle" font-size="11" fill="#333">${esc(n.name)}</text>`;
+  }
+}
+
+// 知识图谱按钮
+if (document.getElementById("kg-refresh")) {
+  document.getElementById("kg-refresh").onclick = loadGraph;
+}
+if (document.getElementById("kg-ingest-all")) {
+  document.getElementById("kg-ingest-all").onclick = async () => {
+    const btn = document.getElementById("kg-ingest-all");
+    btn.textContent = "扫描中...";
+    try {
+      // 获取所有卡片并逐个抽取
+      const { cards } = await API("/api/cards");
+      for (const c of (cards || []).slice(0, 30)) {
+        await API("/api/kg/ingest", { method: "POST", body: { card_id: c.id, title: c.title, content: c.content, tags: c.tags } });
+      }
+      btn.textContent = "✅ 扫描完成";
+      loadGraph();
+    } catch (e) { btn.textContent = "❌ 失败"; console.error(e); }
+    setTimeout(() => btn.textContent = "📊 扫描全部卡片", 2000);
+  };
+}
+
+/* ==================== 终极形态：学习看板 ==================== */
+async function loadLearn() {
+  try {
+    const data = await API("/api/learning/dashboard");
+    document.getElementById("lr-streak").textContent = data.streak?.current_streak || 0;
+    document.getElementById("lr-longest").textContent = data.streak?.longest_streak || 0;
+    document.getElementById("lr-cards").textContent = data.cards_count || 0;
+    document.getElementById("lr-review").textContent = data.reviews_today || 0;
+
+    // 盲区
+    document.getElementById("lr-gaps").innerHTML = data.gaps?.length
+      ? data.gaps.map(g => `<div class="list-item"><div class="li-title">⚠ ${esc(g.topic)} <span class="tag">${esc(g.type)}</span></div><div class="li-sub">${esc(g.detail)}</div></div>`).join("")
+      : '<div class="list-item"><div class="li-sub">知识覆盖良好，没有明显盲区！</div></div>';
+
+    // 学习路径
+    document.getElementById("lr-paths").innerHTML = data.paths?.length
+      ? data.paths.map(p => `<div class="list-item"><div class="li-title">📍 ${esc(p.title)}</div><div class="li-sub">${(p.steps||[]).map(s => `Step ${s.step}: ${esc(s.title)}`).join(" → ")}</div></div>`).join("")
+      : '<div class="list-item"><div class="li-sub">暂无学习路径，点击上方按钮生成。</div></div>';
+
+    // 覆盖度
+    const cov = data.coverage || {};
+    const maxCov = Math.max(...Object.values(cov), 1);
+    document.getElementById("lr-coverage").innerHTML = Object.entries(cov).map(([k, v]) =>
+      `<div style="margin:4px 0"><span style="display:inline-block;width:100px;font-size:12px">${esc(k)}</span><div style="display:inline-block;height:16px;background:#7F77DD;border-radius:4px;width:${(v/maxCov*200).toFixed(0)}px;vertical-align:middle"></div> <span style="font-size:12px;color:#888">${v}条</span></div>`
+    ).join("") || '<p class="hint">暂无数据</p>';
+  } catch (e) { console.error("Learn load error:", e); }
+}
+
+// 学习路径按钮
+if (document.getElementById("lr-gen-path")) {
+  document.getElementById("lr-gen-path").onclick = async () => {
+    const topic = document.getElementById("lr-topic").value.trim();
+    const btn = document.getElementById("lr-gen-path");
+    btn.textContent = "生成中...";
+    try {
+      await API("/api/learning/path", { method: "POST", body: { topic } });
+      btn.textContent = "✅ 已生成";
+      loadLearn();
+    } catch (e) { btn.textContent = "❌ 失败"; }
+    setTimeout(() => btn.textContent = "生成学习路径", 2000);
+  };
+}
+
+/* ==================== 终极形态：Agent 中心 ==================== */
+async function loadAgents() {
+  try {
+    const data = await API("/api/agent/log");
+    document.getElementById("agent-log").innerHTML = data?.length
+      ? data.map(l => {
+          const time = l.created_at ? new Date(l.created_at * 1000).toLocaleString() : "";
+          return `<div class="list-item"><div class="li-title">[${esc(l.agent_name)}] ${esc(l.action)} <span class="tag">${time}</span></div><div class="li-sub">${esc((l.detail||"").slice(0, 100))}</div></div>`;
+        }).join("")
+      : '<div class="list-item"><div class="li-sub">Agent 还没有活动记录。点击上方按钮指挥它们！</div></div>';
+  } catch (e) { console.error("Agent log error:", e); }
+}
+
+async function runAgent(type) {
+  const resultBox = document.getElementById("agent-result");
+  resultBox.classList.remove("hidden");
+  resultBox.textContent = "Agent 团队正在协作工作中...";
+  try {
+    const r = await API("/api/agent/run", { method: "POST", body: { type, input: "" } });
+    let html = `<h4>任务: ${esc(r.task)}</h4>`;
+    for (const [agent, result] of Object.entries(r.agents || {})) {
+      html += `<div style="margin:8px 0"><b>[${esc(agent)}]</b><br>`;
+      if (result.digest) html += esc(result.digest).replace(/\n/g, "<br>").slice(0, 500);
+      else if (result.answer) html += esc(result.answer).replace(/\n/g, "<br>").slice(0, 300);
+      else if (result.path) html += esc(JSON.stringify(result.path)).slice(0, 300);
+      else html += esc(JSON.stringify(result)).slice(0, 300);
+      html += `</div>`;
+    }
+    resultBox.innerHTML = html;
+    loadAgents();
+  } catch (e) { resultBox.textContent = "出错: " + e.message; }
 }
 
 initAuth();

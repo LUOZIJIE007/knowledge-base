@@ -15,6 +15,7 @@ import db
 import llm
 import pipeline
 import metacognition
+import rag
 from db import now
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -303,6 +304,14 @@ class Handler(BaseHTTPRequestHandler):
             s = llm.load_settings()
             return self._json({"ai_enabled": llm.is_ai_enabled(), "base_url": s.get("base_url", ""), "model": s.get("model", "")})
 
+        # ---- 终极形态：RAG / 知识图谱 / 学习看板 / Agent ----
+        if path == "/api/kg/graph":
+            return self._json(rag.get_graph(uid))
+        if path == "/api/learning/dashboard":
+            return self._json(rag.get_learning_dashboard(uid))
+        if path == "/api/agent/log":
+            return self._json(rag.get_agent_log(uid))
+
         # ---- 运维看板 ----
         if path == "/api/ops/dashboard":
             ops_db.init_db()
@@ -543,6 +552,35 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/meta/model":
             metacognition.add_model_note(uid, body.get("title", ""), body.get("content", ""))
             return self._json({"ok": True})
+
+        # ---- 终极形态 API ----
+        if path == "/api/rag/ask":
+            question = body.get("question", "")
+            if not question.strip():
+                return self._json({"error": "问题不能为空"}, 400)
+            if not rate_limit(f"ai:{uid}", 60, 20):
+                return self._json({"error": "AI 调用过于频繁"}, 429)
+            return self._json(rag.answer(uid, question))
+
+        if path == "/api/kg/ingest":
+            card_id = body.get("card_id", 0)
+            title = body.get("title", "")
+            content = body.get("content", "")
+            tags = body.get("tags", "")
+            e_count, r_count = rag.ingest_card(uid, card_id, title, content, tags)
+            return self._json({"entities": e_count, "relations": r_count})
+
+        if path == "/api/learning/path":
+            if not rate_limit(f"ai:{uid}", 60, 10):
+                return self._json({"error": "AI 调用过于频繁"}, 429)
+            return self._json(rag.generate_learning_path(uid, body.get("topic", "")))
+
+        if path == "/api/agent/run":
+            task_type = body.get("type", "analyze")
+            input_data = body.get("input", "")
+            if not rate_limit(f"ai:{uid}", 60, 15):
+                return self._json({"error": "AI 调用过于频繁"}, 429)
+            return self._json(rag.run_agents(uid, task_type, input_data))
 
         # ---- 设置 ----
         if path == "/api/settings/save":
