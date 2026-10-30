@@ -1,13 +1,16 @@
 /* 个人AI知识库 - 前端逻辑 */
-const API = (path, opts = {}) => fetch(path, {
-  headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("token") },
-  body: opts.body ? JSON.stringify(opts.body) : undefined,
-  ...opts,
-}).then(async r => {
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || "请求失败");
-  return data;
-});
+const API = (path, opts = {}) => {
+  const { body, ...rest } = opts;
+  return fetch(path, {
+    ...rest,
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("token") },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(async r => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || "请求失败");
+    return data;
+  });
+};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const libShort = l => (l || "").replace("库", "");
 
@@ -201,22 +204,7 @@ async function loadAskMode() {
     document.getElementById("ask-mode").textContent = "当前模式：" + (r.ai_enabled ? "AI 智能问答" : "规则模式（配置 AI 接口后升级）");
   } catch {}
 }
-document.getElementById("ask-btn").onclick = askQ;
-async function askQ() {
-  const input = document.getElementById("ask-input");
-  const q = input.value.trim();
-  if (!q) return;
-  const log = document.getElementById("chat-log");
-  log.innerHTML += `<div class="msg-row msg-user">${esc(q)}</div>`;
-  input.value = "";
-  log.innerHTML += `<div class="msg-row msg-ai">思考中…</div>`;
-  const last = log.lastElementChild;
-  try {
-    const r = await API("/api/ask", { method: "POST", body: { question: q } });
-    last.innerHTML = esc(r.answer);
-  } catch (e) { last.textContent = "出错：" + e.message; }
-  log.scrollTop = log.scrollHeight;
-}
+/* 问答功能绑定在底部（RAG 版本） */
 
 /* ---------- 复盘 ---------- */
 document.getElementById("review-ai").onclick = () => {

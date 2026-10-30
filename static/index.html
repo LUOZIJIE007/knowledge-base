@@ -128,7 +128,7 @@
             <div class="chat-bubble bot">你好！我是你的知识库助手。基于你的知识卡片回答问题，并标注来源。试试问我任何事！</div>
           </div>
           <div class="chat-input">
-            <input id="ask-input" class="w" placeholder="基于知识库提问..." onkeydown="if(event.key==='Enter')askQ()">
+            <input id="ask-input" class="w" placeholder="基于知识库提问..." onkeydown="if(event.key==='Enter'){event.preventDefault();askQ()}">
             <button id="ask-btn" class="btn primary">提问</button>
             <button id="ask-rag-btn" class="btn ghost" title="使用 RAG 深度检索">RAG</button>
           </div>

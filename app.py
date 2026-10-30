@@ -16,6 +16,8 @@ import llm
 import pipeline
 import metacognition
 import rag
+import evolve
+import rag_pro
 from db import now
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -312,6 +314,14 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/agent/log":
             return self._json(rag.get_agent_log(uid))
 
+        # ---- 自我进化 GET ----
+        if path == "/api/evolve/summary":
+            return self._json(evolve.get_evolution_summary())
+        if path == "/api/evolve/domains":
+            return self._json(evolve.get_domain_stats())
+        if path == "/api/evolve/gaps":
+            return self._json({"gaps": evolve.detect_gaps()})
+
         # ---- 运维看板 ----
         if path == "/api/ops/dashboard":
             ops_db.init_db()
@@ -560,7 +570,30 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "问题不能为空"}, 400)
             if not rate_limit(f"ai:{uid}", 60, 20):
                 return self._json({"error": "AI 调用过于频繁"}, 429)
-            return self._json(rag.answer(uid, question))
+            return self._json(rag_pro.rag_answer(question))
+
+        # ---- 自我进化 API ----
+        if path == "/api/evolve/summary":
+            return self._json(evolve.get_evolution_summary())
+
+        if path == "/api/evolve/domains":
+            return self._json(evolve.get_domain_stats())
+
+        if path == "/api/evolve/run":
+            result = evolve.auto_evolve()
+            return self._json(result)
+
+        if path == "/api/evolve/digest":
+            title = body.get("title", "")
+            content = body.get("content", "")
+            if not content.strip():
+                return self._json({"error": "内容不能为空"}, 400)
+            result = evolve.digest_content(title, content, body.get("source", "manual"))
+            return self._json(result)
+
+        if path == "/api/evolve/gaps":
+            gaps = evolve.detect_gaps()
+            return self._json({"gaps": gaps})
 
         if path == "/api/kg/ingest":
             card_id = body.get("card_id", 0)
